@@ -397,33 +397,24 @@ let zoom = 1;
 let panNorm = 0; // left edge of visible window, normalized
 
 // ═══ Helpers ══════════════════════════════════════════════════════════════════
-// iOS Safari requires AudioContext to be created AND resumed inside a user gesture.
-// We create it lazily on first tap and keep a resume promise ready.
-async function getCtx() {
+// iOS Safari: AudioContext must be created AND resume() called synchronously
+// inside the user gesture. We do this on every button tap, then await the promise.
+function getOrCreateCtx() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume();
   }
   return audioCtx;
 }
 
-// Belt-and-suspenders: unlock audio on the very first touch/click anywhere
-let audioUnlocked = false;
-async function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  const ctx = await getCtx();
-  // Play a silent buffer — required on some iOS versions
-  const buf = ctx.createBuffer(1, 1, 22050);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.connect(ctx.destination);
-  src.start(0);
+// Call this synchronously at the top of every click/touch handler that plays audio.
+// Returns the resume promise — await it before using ctx.currentTime.
+function ensureAudio() {
+  const ctx = getOrCreateCtx();
+  if (ctx.state === 'suspended') {
+    return ctx.resume(); // returns Promise — iOS honours resume() if called sync
+  }
+  return Promise.resolve();
 }
-document.addEventListener('touchstart', unlockAudio, { once: true });
-document.addEventListener('click',      unlockAudio, { once: true });
 function formatTime(s) {
   if (isNaN(s) || s < 0) s = 0;
   return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
@@ -449,7 +440,7 @@ fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
 async function loadFile(file) {
   if (!file) return;
   setStatus('Laden...');
-  const ctx = await getCtx();
+  const ctx = getOrCreateCtx();
   let decoded;
   try {
     decoded = await ctx.decodeAudioData(await file.arrayBuffer());
@@ -494,6 +485,7 @@ const meterWrap = document.getElementById('meterWrap');
 const meterBar  = document.getElementById('meterBar');
 
 recBtn.addEventListener('click', () => {
+  ensureAudio(); // synchronous resume inside tap gesture
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     stopRecording();
   } else {
@@ -510,7 +502,7 @@ async function startRecording() {
   }
 
   // Level meter via Web Audio analyser
-  const ctx = await getCtx();
+  const ctx = getOrCreateCtx();
   const src = ctx.createMediaStreamSource(recStream);
   recAnalyser = ctx.createAnalyser();
   recAnalyser.fftSize = 256;
@@ -552,7 +544,7 @@ async function finishRecording() {
   setStatus('⏳ Opname verwerken...');
   const blob = new Blob(recChunks, { type: mediaRecorder.mimeType });
   const ab   = await blob.arrayBuffer();
-  const ctx  = await getCtx();
+  const ctx  = getOrCreateCtx();
   let decoded;
   try {
     decoded = await ctx.decodeAudioData(ab);
@@ -964,13 +956,18 @@ document.getElementById('newBtn').addEventListener('click', () => {
 // ═══ Playback ══════════════════════════════════════════════════════════════════
 document.getElementById('playBtn').addEventListener('click', () => {
   if (isPlaying && !isLooping) { stopAll(); return; }
-  stopAll(); playNormal(0);
+  stopAll();
+  // Synchronously create/resume context inside the tap, then play
+  const resumeP = ensureAudio();
+  resumeP.then(() => playNormal(0));
 });
 document.getElementById('loopBtn').addEventListener('click', () => {
   if (isLooping) { stopAll(); return; }
   if (hasSel && mode === 'loop') { loopS = selA * workingBuffer.duration; loopE = selB * workingBuffer.duration; }
   if (loopE <= loopS) return;
-  stopAll(); startLoop();
+  stopAll();
+  const resumeP = ensureAudio();
+  resumeP.then(() => startLoop());
 });
 document.getElementById('stopBtn').addEventListener('click', stopAll);
 
@@ -990,9 +987,9 @@ function stopAll() {
   redrawOverlays();
 }
 
-async function playNormal(offset) {
-  if (!workingBuffer) return;
-  const ctx = await getCtx();
+function playNormal(offset) {
+  if (!workingBuffer || !audioCtx) return;
+  const ctx = audioCtx;
   const nodes = buildChain(ctx, workingBuffer);
   nodes.src.start(0, offset);
   nodes.src.onended = () => {
@@ -1016,9 +1013,9 @@ function startLoop() {
   playLoopSegment();
 }
 
-async function playLoopSegment() {
-  if (!isLooping || !workingBuffer) return;
-  const ctx = await getCtx();
+function playLoopSegment() {
+  if (!isLooping || !workingBuffer || !audioCtx) return;
+  const ctx = audioCtx;
   const sr = workingBuffer.sampleRate;
   const s0 = Math.floor(loopS * sr), s1 = Math.floor(loopE * sr);
   if (s1 <= s0) { stopAll(); return; }
@@ -1094,7 +1091,7 @@ document.getElementById('trimBtn').addEventListener('click', async () => {
   const s0 = Math.floor(selA * workingBuffer.length);
   const s1 = Math.floor(selB * workingBuffer.length);
   const len = s1 - s0;
-  const ctx = await getCtx();
+  const ctx = getOrCreateCtx();
   const nb = ctx.createBuffer(workingBuffer.numberOfChannels, len, sr);
   for (let c = 0; c < workingBuffer.numberOfChannels; c++) {
     nb.copyToChannel(workingBuffer.getChannelData(c).slice(s0, s1), c);
