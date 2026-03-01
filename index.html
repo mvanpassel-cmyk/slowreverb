@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SlowReverb">
+<meta name="theme-color" content="#0d0d0f">
+<link rel="apple-touch-icon" id="appleIcon">
+<link rel="manifest" id="pwaManifest">
 <title>SlowReverb Studio</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -231,7 +238,9 @@
 <body>
 
 <h1>🎛 SlowReverb Studio</h1>
-<p class="subtitle">Upload audio · Effecten · Trim & Loop · Export</p>
+<p class="subtitle">Upload audio · Effecten · Trim & Loop · Export &nbsp;
+  <button class="btn btn-secondary" id="newBtn" style="font-size:0.75rem;padding:4px 12px;vertical-align:middle">＋ Nieuw</button>
+</p>
 
 <div class="app">
 
@@ -287,8 +296,9 @@
       </div>
       <div class="waveform-controls-row">
         <span class="zoom-label">Zoom</span>
-        <input type="range" id="zoomSlider" min="1" max="16" step="0.1" value="1">
+        <input type="range" id="zoomSlider" min="0" max="100" step="0.5" value="0">
         <span class="zoom-label" id="zoomVal">1×</span>
+        <button class="btn btn-secondary" id="zoomFitBtn" style="padding:3px 10px;font-size:0.72rem">⊡ Fit</button>
       </div>
     </div>
 
@@ -387,10 +397,33 @@ let zoom = 1;
 let panNorm = 0; // left edge of visible window, normalized
 
 // ═══ Helpers ══════════════════════════════════════════════════════════════════
-function getCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// iOS Safari requires AudioContext to be created AND resumed inside a user gesture.
+// We create it lazily on first tap and keep a resume promise ready.
+async function getCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
   return audioCtx;
 }
+
+// Belt-and-suspenders: unlock audio on the very first touch/click anywhere
+let audioUnlocked = false;
+async function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const ctx = await getCtx();
+  // Play a silent buffer — required on some iOS versions
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+document.addEventListener('touchstart', unlockAudio, { once: true });
+document.addEventListener('click',      unlockAudio, { once: true });
 function formatTime(s) {
   if (isNaN(s) || s < 0) s = 0;
   return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
@@ -416,7 +449,7 @@ fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
 async function loadFile(file) {
   if (!file) return;
   setStatus('Laden...');
-  const ctx = getCtx();
+  const ctx = await getCtx();
   let decoded;
   try {
     decoded = await ctx.decodeAudioData(await file.arrayBuffer());
@@ -435,7 +468,7 @@ function loadBuffer(decoded, label) {
   workingBuffer  = decoded;
   trimApplied = false; hasSel = false;
   zoom = 1; panNorm = 0;
-  document.getElementById('zoomSlider').value = 1;
+  document.getElementById('zoomSlider').value = 0;
   document.getElementById('zoomVal').textContent = '1×';
   ['waveformSection','effectsSection','exportSection'].forEach(id => {
     document.getElementById(id).style.display = 'block';
@@ -477,7 +510,7 @@ async function startRecording() {
   }
 
   // Level meter via Web Audio analyser
-  const ctx = getCtx();
+  const ctx = await getCtx();
   const src = ctx.createMediaStreamSource(recStream);
   recAnalyser = ctx.createAnalyser();
   recAnalyser.fftSize = 256;
@@ -519,7 +552,7 @@ async function finishRecording() {
   setStatus('⏳ Opname verwerken...');
   const blob = new Blob(recChunks, { type: mediaRecorder.mimeType });
   const ab   = await blob.arrayBuffer();
-  const ctx  = getCtx();
+  const ctx  = await getCtx();
   let decoded;
   try {
     decoded = await ctx.decodeAudioData(ab);
@@ -869,11 +902,63 @@ document.getElementById('overviewWrap').addEventListener('touchstart', e => {
   drawAll();
 }, { passive: false });
 
-// ═══ Zoom ══════════════════════════════════════════════════════════════════════
+// ═══ Zoom (logarithmic: slider 0-100 → zoom 1-100×) ══════════════════════════
+function sliderToZoom(v) {
+  // 0→1×, 50→~10×, 100→100×  (exponential feel)
+  return Math.pow(100, v / 100);
+}
+function zoomToSlider(z) {
+  return Math.log(z) / Math.log(100) * 100;
+}
+
 document.getElementById('zoomSlider').addEventListener('input', function() {
-  zoom = parseFloat(this.value);
-  document.getElementById('zoomVal').textContent = zoom.toFixed(1) + '×';
+  zoom = sliderToZoom(parseFloat(this.value));
+  document.getElementById('zoomVal').textContent = zoom < 10 ? zoom.toFixed(1) + '×' : Math.round(zoom) + '×';
   clampPan(); drawAll();
+});
+
+document.getElementById('zoomFitBtn').addEventListener('click', () => {
+  zoom = 1; panNorm = 0;
+  document.getElementById('zoomSlider').value = 0;
+  document.getElementById('zoomVal').textContent = '1×';
+  drawAll();
+});
+
+// ═══ "Nieuw" — reset everything to clean slate ════════════════════════════════
+document.getElementById('newBtn').addEventListener('click', () => {
+  if (workingBuffer && !confirm('Alles wissen en opnieuw beginnen?')) return;
+  stopAll();
+  stopRecording();
+
+  // Reset audio state
+  originalBuffer = null; workingBuffer = null;
+  trimApplied = false; hasSel = false;
+  loopS = 0; loopE = 0;
+  zoom = 1; panNorm = 0;
+
+  // Reset UI — hide sections
+  ['waveformSection','effectsSection','exportSection'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('fileName').textContent = '';
+  document.getElementById('resetTrimBtn').style.display = 'none';
+  document.getElementById('zoomSlider').value = 0;
+  document.getElementById('zoomVal').textContent = '1×';
+  document.getElementById('timeDisplay').textContent = '0:00 / 0:00';
+  document.getElementById('selInfo').textContent = 'Selecteer een regio door te slepen';
+  document.getElementById('selInfo').className = 'sel-info';
+
+  // Reset effects sliders
+  const defs = {speed:1,pitch:0,reverb:0,delay:0,bass:0,treble:0,chorus:0,volume:100};
+  for (const [k,v] of Object.entries(defs)) {
+    document.getElementById(k).value = v;
+    document.getElementById(k).dispatchEvent(new Event('input'));
+  }
+
+  // Reset mode to trim
+  setMode('trim');
+  setStatus('');
+  document.getElementById('loopBadge').classList.remove('on');
 });
 
 // ═══ Playback ══════════════════════════════════════════════════════════════════
@@ -905,9 +990,9 @@ function stopAll() {
   redrawOverlays();
 }
 
-function playNormal(offset) {
+async function playNormal(offset) {
   if (!workingBuffer) return;
-  const ctx = getCtx(); if (ctx.state === 'suspended') ctx.resume();
+  const ctx = await getCtx();
   const nodes = buildChain(ctx, workingBuffer);
   nodes.src.start(0, offset);
   nodes.src.onended = () => {
@@ -931,9 +1016,9 @@ function startLoop() {
   playLoopSegment();
 }
 
-function playLoopSegment() {
+async function playLoopSegment() {
   if (!isLooping || !workingBuffer) return;
-  const ctx = getCtx(); if (ctx.state === 'suspended') ctx.resume();
+  const ctx = await getCtx();
   const sr = workingBuffer.sampleRate;
   const s0 = Math.floor(loopS * sr), s1 = Math.floor(loopE * sr);
   if (s1 <= s0) { stopAll(); return; }
@@ -953,12 +1038,23 @@ function playLoopSegment() {
 
 function rafPlayhead() {
   if (!isPlaying || isLooping || !workingBuffer) return;
-  const ctx = getCtx();
+  const ctx = audioCtx; // already resumed, just read currentTime
   const speed = parseFloat(document.getElementById('speed').value);
   const elapsed = (ctx.currentTime - startCtxTime) * speed;
   const audioPos = startAudioOffset + elapsed;
   const norm = audioPos / workingBuffer.duration;
-  document.getElementById('playhead').style.left = normToX(Math.min(norm, 1)) + 'px';
+
+  // Auto-pan: if playhead goes past right edge, scroll so it stays 20% from left
+  const vf = visibleFrac();
+  if (norm > panNorm + vf * 0.95) {
+    panNorm = Math.min(1 - vf, norm - vf * 0.2);
+    drawAll();
+  } else {
+    document.getElementById('playhead').style.left = normToX(Math.min(norm, 1)) + 'px';
+    updateScrollbar();
+    drawOverview();
+  }
+
   document.getElementById('timeDisplay').textContent =
     formatTime(Math.min(audioPos, workingBuffer.duration)) + ' / ' + formatTime(workingBuffer.duration);
   if (norm < 1 && isPlaying) requestAnimationFrame(rafPlayhead);
@@ -966,12 +1062,23 @@ function rafPlayhead() {
 
 function rafLoopHead() {
   if (!isLooping || !workingBuffer) return;
-  const ctx = getCtx();
+  const ctx = audioCtx; // already resumed
   const speed = parseFloat(document.getElementById('speed').value);
   const elapsed = (ctx.currentTime - startCtxTime) * speed;
   const audioPos = loopS + elapsed;
   const norm = audioPos / workingBuffer.duration;
-  document.getElementById('playhead').style.left = normToX(norm) + 'px';
+
+  // Auto-pan to follow loop playhead
+  const vf = visibleFrac();
+  if (norm > panNorm + vf * 0.95 || norm < panNorm) {
+    panNorm = Math.min(1 - vf, Math.max(0, norm - vf * 0.2));
+    drawAll();
+  } else {
+    document.getElementById('playhead').style.left = normToX(norm) + 'px';
+    updateScrollbar();
+    drawOverview();
+  }
+
   const segDur = (loopE - loopS) / speed;
   const pct = Math.min(100, Math.round(elapsed / segDur * 100));
   document.getElementById('timeDisplay').textContent =
@@ -980,20 +1087,21 @@ function rafLoopHead() {
 }
 
 // ═══ Trim ══════════════════════════════════════════════════════════════════════
-document.getElementById('trimBtn').addEventListener('click', () => {
+document.getElementById('trimBtn').addEventListener('click', async () => {
   if (!hasSel || mode !== 'trim' || !workingBuffer) return;
   stopAll();
   const sr = workingBuffer.sampleRate;
   const s0 = Math.floor(selA * workingBuffer.length);
   const s1 = Math.floor(selB * workingBuffer.length);
   const len = s1 - s0;
-  const nb = getCtx().createBuffer(workingBuffer.numberOfChannels, len, sr);
+  const ctx = await getCtx();
+  const nb = ctx.createBuffer(workingBuffer.numberOfChannels, len, sr);
   for (let c = 0; c < workingBuffer.numberOfChannels; c++) {
     nb.copyToChannel(workingBuffer.getChannelData(c).slice(s0, s1), c);
   }
   workingBuffer = nb; trimApplied = true;
   hasSel = false; selA = 0; selB = 0; zoom = 1; panNorm = 0;
-  document.getElementById('zoomSlider').value = 1;
+  document.getElementById('zoomSlider').value = 0;
   document.getElementById('zoomVal').textContent = '1×';
   document.getElementById('resetTrimBtn').style.display = 'inline-block';
   drawAll(); updateSelInfo();
@@ -1003,7 +1111,7 @@ document.getElementById('trimBtn').addEventListener('click', () => {
 document.getElementById('resetTrimBtn').addEventListener('click', () => {
   stopAll(); workingBuffer = originalBuffer; trimApplied = false;
   hasSel = false; selA = 0; selB = 0; zoom = 1; panNorm = 0;
-  document.getElementById('zoomSlider').value = 1;
+  document.getElementById('zoomSlider').value = 0;
   document.getElementById('zoomVal').textContent = '1×';
   document.getElementById('resetTrimBtn').style.display = 'none';
   drawAll(); updateSelInfo();
@@ -1133,6 +1241,150 @@ function toWav(buf) {
 
 // ═══ Resize ════════════════════════════════════════════════════════════════════
 window.addEventListener('resize', () => { if (workingBuffer) drawAll(); });
+
+// ═══ PWA — icon, manifest, service worker ════════════════════════════════════
+(function initPWA() {
+
+  // 1. Draw app icon onto a canvas and export as base64 PNG
+  function makeIconDataURL(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const cx = c.getContext('2d');
+    const s = size;
+
+    // Background
+    const bg = cx.createLinearGradient(0, 0, s, s);
+    bg.addColorStop(0, '#1a0a2e');
+    bg.addColorStop(1, '#0d1a2e');
+    cx.fillStyle = bg;
+    roundRect(cx, 0, 0, s, s, s * 0.22);
+    cx.fill();
+
+    // Waveform bars
+    const bars = [0.25,0.55,0.85,0.65,0.35,0.75,0.9,0.5,0.3,0.7,0.45,0.8];
+    const bw = s * 0.045, gap = (s * 0.72) / bars.length;
+    const midY = s * 0.52;
+    bars.forEach((amp, i) => {
+      const x = s * 0.14 + i * gap;
+      const h = amp * s * 0.38;
+      const gr = cx.createLinearGradient(0, midY - h, 0, midY + h);
+      gr.addColorStop(0, '#7c3aed');
+      gr.addColorStop(0.5, '#a78bfa');
+      gr.addColorStop(1, '#7c3aed');
+      cx.fillStyle = gr;
+      roundRect(cx, x, midY - h, bw, h * 2, bw / 2);
+      cx.fill();
+    });
+
+    // "SR" text
+    cx.fillStyle = '#e0d0ff';
+    cx.font = `bold ${s * 0.16}px -apple-system, sans-serif`;
+    cx.textAlign = 'center';
+    cx.fillText('SR', s / 2, s * 0.88);
+
+    return c.toDataURL('image/png');
+  }
+
+  function roundRect(cx, x, y, w, h, r) {
+    cx.beginPath();
+    cx.moveTo(x + r, y);
+    cx.lineTo(x + w - r, y);
+    cx.quadraticCurveTo(x + w, y, x + w, y + r);
+    cx.lineTo(x + w, y + h - r);
+    cx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    cx.lineTo(x + r, y + h);
+    cx.quadraticCurveTo(x, y + h, x, y + h - r);
+    cx.lineTo(x, y + r);
+    cx.quadraticCurveTo(x, y, x + r, y);
+    cx.closePath();
+  }
+
+  const icon180 = makeIconDataURL(180);
+  const icon512 = makeIconDataURL(512);
+
+  // 2. Set apple-touch-icon
+  document.getElementById('appleIcon').href = icon180;
+
+  // 3. Inject manifest as a blob URL
+  const manifest = {
+    name: 'SlowReverb Studio',
+    short_name: 'SlowReverb',
+    description: 'Audio editor met slowed reverb effecten',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#0d0d0f',
+    theme_color: '#0d0d0f',
+    orientation: 'portrait-primary',
+    icons: [
+      { src: icon180, sizes: '180x180', type: 'image/png' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('pwaManifest').href = URL.createObjectURL(manifestBlob);
+
+  // 4. Register a minimal service worker via blob so the app works offline
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE = 'slowreverb-v1';
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request))
+  );
+});
+`;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swURL  = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swURL, { scope: './' })
+      .catch(() => {}); // silently fail if blocked
+  }
+
+})();
+
+// ═══ "Add to Home Screen" install banner (shown once) ════════════════════════
+(function showInstallHint() {
+  // Only show on iOS Safari where there's no beforeinstallprompt
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('pwa-hint-dismissed');
+  if (!isIOS || isInStandalone || dismissed) return;
+
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+    background: #1a1a2e; border-top: 1px solid #a78bfa;
+    padding: 14px 16px 28px; display: flex; gap: 12px; align-items: flex-start;
+    font-family: -apple-system, sans-serif;
+  `;
+  banner.innerHTML = `
+    <div style="font-size:2rem;line-height:1">🎛</div>
+    <div style="flex:1">
+      <div style="color:#e0e0e0;font-size:0.9rem;font-weight:600;margin-bottom:4px">
+        Voeg toe aan je beginscherm
+      </div>
+      <div style="color:#888;font-size:0.8rem;line-height:1.4">
+        Tik op <strong style="color:#60a5fa">Delen</strong> 
+        <span style="font-size:1rem">⎙</span> onderaan Safari, dan 
+        <strong style="color:#60a5fa">"Zet op beginscherm"</strong> → Voeg toe
+      </div>
+    </div>
+    <button id="pwaClose" style="
+      background:none;border:none;color:#666;font-size:1.3rem;
+      cursor:pointer;padding:0;line-height:1;margin-top:2px
+    ">✕</button>
+  `;
+  document.body.appendChild(banner);
+  document.getElementById('pwaClose').addEventListener('click', () => {
+    banner.remove();
+    localStorage.setItem('pwa-hint-dismissed', '1');
+  });
+})();
 </script>
 </body>
 </html>
