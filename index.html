@@ -844,8 +844,28 @@ async function finishRecording() {
   try { decoded = await getCtx().decodeAudioData(await blob.arrayBuffer()); }
   catch (e) { $('fileName').textContent = '❌ Kon de opname niet verwerken.'; return; }
   fileBase = 'opname_' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-  $('fileName').textContent = '🎙 Opname (' + formatTime(decoded.duration) + ')';
+  const db = normalizeRecording(decoded);
+  $('fileName').textContent = '🎙 Opname (' + formatTime(decoded.duration) + ')' + (db >= 1 ? ` · versterkt +${Math.round(db)} dB` : '');
   loadBuffer(decoded);
+}
+/* Raw mic input (no browser auto-gain) is often very soft. Bring the recording to a healthy
+   level: gain from a high percentile (so one click doesn't block it), max +30 dB, then a
+   soft limiter above 0.85 so peaks never clip. Returns the applied gain in dB. */
+function normalizeRecording(buf) {
+  const chans = [...Array(buf.numberOfChannels)].map((_, i) => buf.getChannelData(i));
+  const step = Math.max(1, Math.floor(buf.length / 200000)), vals = [];
+  for (const c of chans) for (let i = 0; i < c.length; i += step) vals.push(Math.abs(c[i]));
+  if (!vals.length) return 0;
+  vals.sort((a, b) => a - b);
+  const ref = Math.max(vals[Math.floor(vals.length * 0.9995)], 1e-4);
+  const gain = Math.min(0.85 / ref, 31.6);
+  if (gain <= 1.05) return 0;
+  const T = 0.85, K = 1 - T;
+  for (const c of chans) for (let i = 0; i < c.length; i++) {
+    const x = c[i] * gain, a = Math.abs(x);
+    c[i] = a <= T ? x : Math.sign(x) * (T + K * Math.tanh((a - T) / K));
+  }
+  return 20 * Math.log10(gain);
 }
 function animateMeter() {
   if (!recAnalyser) return;
