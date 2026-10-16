@@ -815,7 +815,7 @@ $('recBtn').addEventListener('click', () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording(); else startRecording();
 });
 async function startRecording() {
-  try { recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); }
+  try { recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
   catch (e) { $('fileName').textContent = '❌ Geen toegang tot de microfoon. Sta het toe in je instellingen.'; return; }
   const ctx = getCtx(), src = ctx.createMediaStreamSource(recStream);
   recAnalyser = ctx.createAnalyser(); recAnalyser.fftSize = 256; src.connect(recAnalyser);
@@ -849,7 +849,7 @@ async function finishRecording() {
   loadBuffer(decoded);
 }
 /* Raw mic input (no browser auto-gain) is often very soft. Bring the recording to a healthy
-   level: gain from a high percentile (so one click doesn't block it), max +30 dB, then a
+   level: gain from a high percentile (so one click doesn't block it), max +40 dB, then a
    soft limiter above 0.85 so peaks never clip. Returns the applied gain in dB. */
 function normalizeRecording(buf) {
   const chans = [...Array(buf.numberOfChannels)].map((_, i) => buf.getChannelData(i));
@@ -857,8 +857,8 @@ function normalizeRecording(buf) {
   for (const c of chans) for (let i = 0; i < c.length; i += step) vals.push(Math.abs(c[i]));
   if (!vals.length) return 0;
   vals.sort((a, b) => a - b);
-  const ref = Math.max(vals[Math.floor(vals.length * 0.9995)], 1e-4);
-  const gain = Math.min(0.85 / ref, 31.6);
+  const ref = Math.max(vals[Math.floor(vals.length * 0.995)], 1e-4);
+  const gain = Math.min(0.85 / ref, 100);
   if (gain <= 1.05) return 0;
   const T = 0.85, K = 1 - T;
   for (const c of chans) for (let i = 0; i < c.length; i++) {
