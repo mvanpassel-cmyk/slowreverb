@@ -167,6 +167,14 @@
   .mode-tab.active-loop { background: rgba(5,255,161,0.1); border-color: var(--mint); color: var(--mint); }
   .mode-hint { font-size: 0.78rem; color: var(--dim); margin-left: 6px; }
 
+  .tempo-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; font-size: 0.78rem; color: var(--muted); }
+  .tempo-row .lbl { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: var(--dim); margin-left: 6px; }
+  .tempo-row .lbl:first-child { margin-left: 0; }
+  .bpm-in { width: 92px; font-family: var(--lcd); font-size: 1.15rem; color: var(--cyan); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 2px 8px; outline: none; }
+  .bpm-in:focus-visible { border-color: var(--cyan); }
+  .bpm-slow { font-family: var(--lcd); font-size: 1.05rem; color: var(--pink); }
+  .tempo-row .btn.on { background: var(--mint); color: #022a1a; border-color: var(--mint); }
+  .bars-group { display: inline-flex; gap: 3px; }
   .waveform-outer { background: rgba(8,4,20,0.85); border-radius: 12px; border: 1px solid var(--line); overflow: hidden; }
   #timeRuler { display: block; width: 100%; height: 20px; }
   .waveform-wrap { position: relative; overflow: hidden; cursor: crosshair; user-select: none; -webkit-user-select: none; height: 140px; touch-action: none; }
@@ -323,6 +331,24 @@
       <span class="mode-hint" id="modeHint">Sleep om een stuk te kiezen · klik om te springen</span>
     </div>
 
+    <div class="tempo-row" id="tempoRow">
+      <span class="lbl">Tempo</span>
+      <input class="bpm-in" id="bpmIn" type="number" min="40" max="240" step="0.1" placeholder="—" aria-label="BPM">
+      <span>BPM</span>
+      <span class="bpm-slow" id="bpmSlow" title="Tempo na snelheid/toonhoogte"></span>
+      <button class="btn btn-ghost btn-small" id="bpmHalf" title="Halve tempo">½×</button>
+      <button class="btn btn-ghost btn-small" id="bpmDouble" title="Dubbel tempo">2×</button>
+      <button class="btn btn-ghost btn-small" id="bpmTap" title="Tik mee op de tel">Tap</button>
+      <button class="btn btn-ghost btn-small" id="bpmDetect" title="Tempo opnieuw detecteren">⟳ Detecteer</button>
+      <button class="btn btn-ghost btn-small" id="beatHere" title="Zet tel 1 op de afspeelpositie">Tel 1 hier</button>
+      <span class="lbl">Snap</span>
+      <button class="btn btn-ghost btn-small on" id="snapBtn" aria-pressed="true" title="Loop-randen vastklikken op de tel">⊞ aan</button>
+      <span class="lbl">Loop-lengte</span>
+      <span class="bars-group" id="barsGroup"></span>
+      <button class="btn btn-ghost btn-small" id="nudgeL" title="Loop één tel naar links">◀ tel</button>
+      <button class="btn btn-ghost btn-small" id="nudgeR" title="Loop één tel naar rechts">tel ▶</button>
+    </div>
+
     <div class="waveform-outer">
       <canvas id="timeRuler"></canvas>
       <div class="waveform-wrap" id="waveformWrap">
@@ -464,6 +490,7 @@ let loopOn = false, loopS = 0, loopE = 0;
 let selA = 0, selB = 0, hasSel = false, isDragging = false, dragOriginX = 0;
 let mode = 'trim', zoom = 1, panNorm = 0;
 let activePreset = -1;
+let bpm = 0, gridT0 = 0, snapOn = true, loopBars = 0, barBeats = 4, tempoInfo = '';
 
 function getCtx() {
   if (!audioCtx) {
@@ -529,6 +556,7 @@ function setParam(id, v, byUser) {
   }
   if (G) applyGraph(G, true, id);
   updateExportMeta();
+  if (id === 'speed' || id === 'pitch') updateTempoUI();
 }
 function applyPreset(i) {
   activePreset = i;
@@ -744,7 +772,7 @@ function updateTransport() {
   $('clearLoopBtn').classList.toggle('hidden', !(loopE - loopS > 0.02));
   $('exportRange').querySelector('[value=loop]').disabled = !(loopE - loopS > 0.02);
   if ($('exportRange').value === 'loop' && !(loopE - loopS > 0.02)) $('exportRange').value = 'all';
-  redrawOverlays(); updateExportMeta();
+  redrawOverlays(); updateExportMeta(); if (typeof updateTempoUI === 'function' && $('bpmIn')) updateTempoUI();
 }
 $('playBtn').addEventListener('click', togglePlay);
 $('stopBtn').addEventListener('click', stopPlay);
@@ -801,7 +829,8 @@ function loadBuffer(decoded) {
   $('resetTrimBtn').classList.add('hidden');
   setTrackMeta();
   updateTransport(); updateSelInfo(); updateTime(0);
-  requestAnimationFrame(() => { drawAll(); placePlayhead(0); });
+  bpm = 0; gridT0 = 0; tempoInfo = ''; updateTempoUI();
+  requestAnimationFrame(() => { drawAll(); placePlayhead(0); setTimeout(detectTempo, 30); });
   setStatus('');
 }
 function setTrackMeta() {
@@ -914,6 +943,22 @@ function drawWave() {
   wctx.fillStyle = g;
   const total = workingBuffer.length;
   peaksInto(wctx, workingBuffer.getChannelData(0), Math.floor(panNorm * total), Math.floor((panNorm + visibleFrac()) * total), W, H, 0.92);
+  drawBeatGrid(W, H);
+}
+function drawBeatGrid(W, H) {
+  if (!(bpm > 0)) return;
+  const dur = workingBuffer.duration, beat = 60 / bpm, t0 = panNorm * dur, t1 = t0 + dur * visibleFrac();
+  const pxPerBeat = beat / (dur * visibleFrac()) * W, onlyBars = pxPerBeat < 6;
+  if (onlyBars && pxPerBeat * barBeats < 6) return;
+  for (let k = Math.ceil((t0 - gridT0) / beat); ; k++) {
+    const tt = gridT0 + k * beat; if (tt > t1) break;
+    const isBar = ((k % barBeats) + barBeats) % barBeats === 0;
+    if (onlyBars && !isBar) continue;
+    const x = Math.round((tt - t0) / (t1 - t0) * W);
+    wctx.fillStyle = isBar ? 'rgba(255,210,127,0.55)' : 'rgba(255,255,255,0.13)';
+    wctx.fillRect(x, 0, 1, isBar ? H : H * 0.18);
+    if (isBar) wctx.fillRect(x, H - H * 0.18, 1, H * 0.18);
+  }
 }
 function drawRuler() {
   const W = getW(), H = 20;
@@ -1054,7 +1099,7 @@ function updateSelInfo() {
     el.textContent = `✂ ${formatTime(selA * dur)} → ${formatTime(selB * dur)} (${formatTime((selB - selA) * dur)}) · klik "Knip bij" om alleen dit stuk te houden`;
     el.className = 'sel-info has-trim';
   } else if (loopE - loopS > 0.02) {
-    el.textContent = `↻ Loop ${formatTime(loopS)} → ${formatTime(loopE)} (${((loopE - loopS)).toFixed(1)} s)` + (loopOn ? ' · actief' : ' · klik Loop om te herhalen');
+    el.textContent = `↻ Loop ${formatTime(loopS)} → ${formatTime(loopE)} (${((loopE - loopS)).toFixed(2)} s${bpm > 0 ? ' · ' + fmtBeats((loopE - loopS) / (60 / bpm)) : ''})` + (loopOn ? ' · actief' : ' · klik Loop om te herhalen');
     el.className = 'sel-info has-loop';
   } else {
     el.textContent = mode === 'trim' ? 'Sleep op de golfvorm om een stuk te kiezen' : 'Sleep op de golfvorm om een loop-regio te kiezen';
@@ -1073,6 +1118,10 @@ wrapEl.addEventListener('pointermove', e => {
   const cur = xToNorm(wrapX(e.clientX)), o = xToNorm(dragOriginX);
   selA = Math.max(0, Math.min(1, Math.min(o, cur))); selB = Math.max(0, Math.min(1, Math.max(o, cur)));
   hasSel = Math.abs(normToX(selB) - normToX(selA)) > 4;
+  if (hasSel && mode === 'loop' && snapOn && bpm > 0) {
+    const dur = workingBuffer.duration, [a, b] = snapLoop(selA * dur, selB * dur);
+    selA = a / dur; selB = b / dur;
+  }
   redrawOverlays(); updateSelInfo();
 });
 wrapEl.addEventListener('pointerup', () => {
@@ -1081,6 +1130,7 @@ wrapEl.addEventListener('pointerup', () => {
   if (!hasSel) { seek(xToNorm(dragOriginX) * dur); redrawOverlays(); updateSelInfo(); return; }
   if (mode === 'loop') {
     loopS = selA * dur; loopE = selB * dur; hasSel = false; loopOn = true;
+    if (snapOn && bpm > 0) [loopS, loopE] = snapLoop(loopS, loopE);
     ensureAudio().then(() => play(loopS));
   }
   updateTransport(); updateSelInfo();
@@ -1119,7 +1169,9 @@ function sliceBuffer(buf, s0, s1, ctx) {
 $('trimBtn').addEventListener('click', () => {
   if (!hasSel || mode !== 'trim') return;
   killGraph(); state = 'stopped'; pos = 0;
+  const cutAt = selA * workingBuffer.duration;
   workingBuffer = sliceBuffer(workingBuffer, Math.floor(selA * workingBuffer.length), Math.floor(selB * workingBuffer.length));
+  if (bpm > 0) { const bar = barBeats * 60 / bpm; gridT0 = (((gridT0 - cutAt) % bar) + bar) % bar; }
   hasSel = false; loopOn = false; loopS = loopE = 0; zoom = 1; panNorm = 0; syncZoomUI();
   $('resetTrimBtn').classList.remove('hidden');
   setTrackMeta(); drawAll(); placePlayhead(0); updateTime(0); updateTransport(); updateSelInfo();
@@ -1127,7 +1179,7 @@ $('trimBtn').addEventListener('click', () => {
 $('resetTrimBtn').addEventListener('click', () => {
   killGraph(); state = 'stopped'; pos = 0;
   workingBuffer = originalBuffer; hasSel = false; loopOn = false; loopS = loopE = 0; zoom = 1; panNorm = 0; syncZoomUI();
-  $('resetTrimBtn').classList.add('hidden');
+  $('resetTrimBtn').classList.add('hidden'); detectTempo();
   setTrackMeta(); drawAll(); placePlayhead(0); updateTime(0); updateTransport(); updateSelInfo();
 });
 
@@ -1164,10 +1216,24 @@ async function renderOffline() {
   const src = workingBuffer, fmt = $('exportFmt').value;
   const sr = (fmt.startsWith('mp3') && ![32000, 44100, 48000].includes(src.sampleRate)) ? 44100 : src.sampleRate;
   const srcDur = isLoop ? loopE - loopS : src.duration;
-  const outDur = srcDur / effRate() + (isLoop ? 0 : exportTail());
+  if (isLoop) {
+    // Seamless loop: play the loop region several times and keep the last full cycle, so reverb
+    // and echo tails from the previous cycle are included and the file repeats without a gap.
+    const cycle = Math.round(srcDur / effRate() * sr);
+    const warm = Math.max(1, Math.ceil(exportTail() * sr / cycle));
+    const off = new OfflineAudioContext(2, cycle * (warm + 1), sr);
+    const g = buildGraph(off, src, false);
+    g.src.loop = true; g.src.loopStart = loopS; g.src.loopEnd = loopE;
+    startGraph(g, 0, loopS);
+    const full = await off.startRendering();
+    const out = new AudioBuffer({ numberOfChannels: 2, length: cycle, sampleRate: sr });
+    for (let c = 0; c < 2; c++) out.copyToChannel(full.getChannelData(c).subarray(cycle * warm, cycle * (warm + 1)), c);
+    return out;
+  }
+  const outDur = srcDur / effRate() + exportTail();
   const off = new OfflineAudioContext(2, Math.ceil(outDur * sr), sr);
   const g = buildGraph(off, src, false);
-  if (isLoop) startGraph(g, 0, loopS, loopE - loopS); else startGraph(g, 0, 0);
+  startGraph(g, 0, 0);
   return off.startRendering();
 }
 function toWav(buf) {
@@ -1217,7 +1283,9 @@ $('exportBtn').addEventListener('click', async () => {
     if (fmt === 'wav') { setStatus('💾 WAV schrijven…'); await tick(); blob = toWav(rendered); ext = 'wav'; }
     else { blob = await toMp3(rendered, fmt === 'mp3-320' ? 320 : 192); ext = 'mp3'; }
     setProgress(1);
-    download(blob, `${fileBase} (${tag}).${ext}`);
+    const isLoopX = $('exportRange').value === 'loop' && loopE - loopS > 0.02;
+    const btag = isLoopX ? ` loop${bpm > 0 ? ' ' + Math.round(bpm * effRate() * 10) / 10 + 'bpm ' + fmtBeats((loopE - loopS) / (60 / bpm)).replace(/ /g, '') : ''}` : '';
+    download(blob, `${fileBase} (${tag}${btag}).${ext}`);
     setStatus(`✅ Klaar: ${ext.toUpperCase()} · ${formatTime(rendered.duration)} · ${(blob.size / 1048576).toFixed(1)} MB`);
   } catch (e) {
     console.error(e); setStatus('❌ Export mislukt: ' + e.message);
@@ -1225,6 +1293,163 @@ $('exportBtn').addEventListener('click', async () => {
     btn.disabled = false; setTimeout(() => setProgress(-1), 1200);
   }
 });
+
+// ═══ Tempo: detection, grid, snapping ════════════════════════════════════════
+/* Onset envelope (positive energy change in a low and a high band, ~11.6 ms hops), then
+   autocorrelation over 60–200 BPM with a mild preference around 120 BPM, then a comb search for
+   the beat phase and the bar phase. Works well for beat-driven music; ambient or free-tempo
+   material can be corrected by hand (½×, 2×, tap, "tel 1 hier"). */
+function onsetEnvelope(buf, hop) {
+  const n = buf.length, ch = [...Array(buf.numberOfChannels)].map((_, i) => buf.getChannelData(i));
+  const frames = Math.floor(n / hop), env = new Float32Array(frames);
+  let lp = 0, prevLo = 0, prevHi = 0, prevX = 0;
+  const a = Math.exp(-2 * Math.PI * 180 / buf.sampleRate);
+  for (let f = 0; f < frames; f++) {
+    let lo = 0, hi = 0;
+    for (let i = f * hop, e = i + hop; i < e; i++) {
+      let x = 0; for (const c of ch) x += c[i]; x /= ch.length;
+      lp = a * lp + (1 - a) * x; const h = x - prevX; prevX = x;
+      lo += lp * lp; hi += h * h;
+    }
+    lo = Math.log1p(lo * 100); hi = Math.log1p(hi * 400);
+    env[f] = Math.max(0, lo - prevLo) + Math.max(0, hi - prevHi);
+    prevLo = lo; prevHi = hi;
+  }
+  // remove slow trend
+  const out = new Float32Array(frames), w = 16; let s = 0;
+  for (let f = 0; f < frames; f++) { s += env[f]; if (f >= w) s -= env[f - w]; out[f] = Math.max(0, env[f] - s / Math.min(f + 1, w)); }
+  return out;
+}
+function detectTempoFrom(buf) {
+  const sr = buf.sampleRate, hop = Math.round(sr * 0.0116), fps = sr / hop;
+  const env = onsetEnvelope(buf, hop), N = env.length;
+  if (N < fps * 4) return null;
+  const lagMin = Math.floor(fps * 60 / 200), lagMax = Math.ceil(fps * 60 / 60);
+  const ac = new Float32Array(lagMax + 2);
+  for (let L = lagMin; L <= lagMax + 1; L++) { let s = 0; for (let i = 0; i + L < N; i++) s += env[i] * env[i + L]; ac[L] = s / (N - L); }
+  let best = -1, bestL = 0;
+  for (let L = lagMin; L <= lagMax; L++) {
+    const b = 60 * fps / L, w = Math.exp(-0.5 * Math.pow(Math.log2(b / 120) / 0.9, 2));
+    const sc = (ac[L] + 0.5 * (ac[2 * L] || 0) + 0.25 * (ac[Math.round(L / 2)] || 0)) * w;
+    if (sc > best) { best = sc; bestL = L; }
+  }
+  // parabolic refinement
+  const y0 = ac[bestL - 1], y1 = ac[bestL], y2 = ac[bestL + 1];
+  const d = (y0 - 2 * y1 + y2) !== 0 ? 0.5 * (y0 - y2) / (y0 - 2 * y1 + y2) : 0;
+  let period = bestL + Math.max(-0.5, Math.min(0.5, d));
+  let b = 60 * fps / period;
+  // refine period with a comb over the whole track
+  const comb = (per, ph) => { let s = 0, k = 0; for (let x = ph; x < N - 1; x += per, k++) { const i = Math.floor(x), fr = x - i; s += env[i] * (1 - fr) + env[i + 1] * fr; } return k ? s / k : 0; };
+  let bestP = period, bestS = -1, bestPh = 0;
+  for (let dp = -0.6; dp <= 0.6; dp += 0.05) {
+    const per = period * (1 + dp / 100 * 2);
+    for (let ph = 0; ph < per; ph += 0.5) { const s = comb(per, ph); if (s > bestS) { bestS = s; bestP = per; bestPh = ph; } }
+  }
+  period = bestP; b = 60 * fps / period;
+  // bar phase: which of 4 beats is strongest (approximate downbeat)
+  let bar = 0, barS = -1;
+  for (let j = 0; j < 4; j++) { const s = comb(period * 4, bestPh + j * period); if (s > barS) { barS = s; bar = j; } }
+  const t0 = (bestPh + bar * period) / fps;
+  // confidence: peak autocorrelation vs mean
+  let mean = 0; for (let L = lagMin; L <= lagMax; L++) mean += ac[L]; mean /= (lagMax - lagMin + 1);
+  return { bpm: Math.round(b * 10) / 10, t0, conf: mean > 0 ? ac[bestL] / mean : 0 };
+}
+function detectTempo() {
+  if (!workingBuffer) return;
+  $('bpmDetect').disabled = true; tempoInfo = 'tempo meten…'; updateTempoUI();
+  setTimeout(() => {
+    try {
+      const r = detectTempoFrom(workingBuffer);
+      if (r) { bpm = r.bpm; const bar = barBeats * 60 / bpm; gridT0 = ((r.t0 % bar) + bar) % bar; tempoInfo = r.conf < 1.35 ? 'onzeker: controleer ½× / 2× of tap' : ''; }
+      else tempoInfo = 'te kort om te meten';
+    } catch (e) { console.error(e); tempoInfo = 'meten mislukt'; }
+    $('bpmDetect').disabled = false; updateTempoUI(); drawAll(); updateSelInfo();
+  }, 20);
+}
+function fmtBeats(nb) {
+  const r = Math.round(nb);
+  if (Math.abs(nb - r) > 0.05) return nb.toFixed(1) + ' tellen';
+  return r % barBeats === 0 ? (r / barBeats) + (r / barBeats === 1 ? ' maat' : ' maten') : r + (r === 1 ? ' tel' : ' tellen');
+}
+function nearestBeat(t) { const beat = 60 / bpm; return gridT0 + Math.round((t - gridT0) / beat) * beat; }
+function snapLoop(a, b) {
+  const dur = workingBuffer.duration, beat = 60 / bpm;
+  let s = nearestBeat(a);
+  if (s < 0) s += beat;
+  let e;
+  if (loopBars > 0) e = s + loopBars * barBeats * beat;
+  else { e = nearestBeat(b); if (e - s < beat * 0.99) e = s + beat; }
+  while (e > dur + 1e-6 && s - beat >= -1e-6) { s -= beat; e -= beat; }
+  return [Math.max(0, s), Math.min(dur, e)];
+}
+function setLoopFromSnap(a, b) {
+  [loopS, loopE] = snapLoop(a, b); loopOn = true;
+  if (state === 'playing' || loopOn) ensureAudio().then(() => play(loopS));
+  updateTransport(); updateSelInfo();
+}
+function updateTempoUI() {
+  const has = bpm > 0, inp = $('bpmIn');
+  if (document.activeElement !== inp) inp.value = has ? bpm : '';
+  const slow = has ? Math.round(bpm * effRate() * 10) / 10 : 0;
+  $('bpmSlow').textContent = tempoInfo ? '· ' + tempoInfo : (has && Math.abs(effRate() - 1) > 0.005 ? `→ ${slow} na effecten` : '');
+  ['bpmHalf', 'bpmDouble', 'beatHere', 'nudgeL', 'nudgeR'].forEach(id => $(id).disabled = !has);
+  $('nudgeL').disabled = $('nudgeR').disabled = !has || !(loopE - loopS > 0.02);
+  $('snapBtn').classList.toggle('on', snapOn); $('snapBtn').setAttribute('aria-pressed', snapOn); $('snapBtn').textContent = snapOn ? '⊞ aan' : '⊞ uit';
+  $('barsGroup').querySelectorAll('button').forEach(bt => { bt.classList.toggle('on', +bt.dataset.bars === loopBars); bt.disabled = !has && +bt.dataset.bars > 0; });
+}
+(function buildBars() {
+  const g = $('barsGroup');
+  [[0, 'vrij'], [1, '1'], [2, '2'], [4, '4'], [8, '8'], [16, '16']].forEach(([n, l]) => {
+    const b = document.createElement('button'); b.className = 'btn btn-ghost btn-small'; b.dataset.bars = n;
+    b.textContent = l; b.title = n ? `${n} ${n === 1 ? 'maat' : 'maten'} (${n * 4} tellen)` : 'Vrije lengte (snapt alleen op de tel)';
+    b.addEventListener('click', () => {
+      loopBars = n; updateTempoUI();
+      if (n > 0 && bpm > 0 && workingBuffer) {
+        const start = loopE - loopS > 0.02 ? loopS : (state === 'playing' ? curPos() : pos);
+        setLoopFromSnap(start, start);
+      }
+    });
+    g.appendChild(b);
+  });
+})();
+$('bpmIn').addEventListener('change', () => {
+  const v = parseFloat($('bpmIn').value);
+  if (v >= 40 && v <= 240) { bpm = Math.round(v * 10) / 10; tempoInfo = ''; } else if (!$('bpmIn').value) bpm = 0;
+  updateTempoUI(); drawAll(); updateSelInfo();
+});
+$('bpmHalf').addEventListener('click', () => { if (bpm / 2 >= 40) { bpm = Math.round(bpm * 5) / 10; tempoInfo = ''; updateTempoUI(); drawAll(); updateSelInfo(); } });
+$('bpmDouble').addEventListener('click', () => { if (bpm * 2 <= 240) { bpm = Math.round(bpm * 20) / 10; tempoInfo = ''; updateTempoUI(); drawAll(); updateSelInfo(); } });
+$('bpmDetect').addEventListener('click', detectTempo);
+let taps = [];
+$('bpmTap').addEventListener('click', () => {
+  const now = performance.now();
+  if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
+  taps.push(now); if (taps.length > 8) taps.shift();
+  if (taps.length >= 3) {
+    const iv = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
+    // taps follow what you hear, so convert back to the original tempo
+    bpm = Math.round(60000 / iv / effRate() * 10) / 10; tempoInfo = '';
+    if (state === 'playing') { const bar = barBeats * 60 / bpm; gridT0 = ((curPos() % bar) + bar) % bar; }
+    updateTempoUI(); drawAll(); updateSelInfo();
+  } else { tempoInfo = `tik nog ${3 - taps.length}×`; updateTempoUI(); tempoInfo = ''; }
+});
+$('beatHere').addEventListener('click', () => {
+  if (!(bpm > 0)) return; const bar = barBeats * 60 / bpm, t = state === 'playing' ? curPos() : pos;
+  gridT0 = ((t % bar) + bar) % bar; drawAll();
+});
+$('snapBtn').addEventListener('click', () => {
+  snapOn = !snapOn; updateTempoUI();
+  if (snapOn && bpm > 0 && loopE - loopS > 0.02) setLoopFromSnap(loopS, loopE);
+});
+function nudge(dir) {
+  if (!(bpm > 0) || !(loopE - loopS > 0.02)) return;
+  const beat = 60 / bpm, len = loopE - loopS, dur = workingBuffer.duration;
+  let s = loopS + dir * beat; s = Math.max(0, Math.min(dur - len, s));
+  loopS = s; loopE = s + len; loopOn = true;
+  ensureAudio().then(() => play(loopS)); updateTransport(); updateSelInfo();
+}
+$('nudgeL').addEventListener('click', () => nudge(-1));
+$('nudgeR').addEventListener('click', () => nudge(1));
 
 // ═══ Resize & start ══════════════════════════════════════════════════════════
 let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawAll(); placePlayhead(curPos()); }, 60); });
