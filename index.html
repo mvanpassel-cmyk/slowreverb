@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -293,24 +293,24 @@
     <h1>SlowReverb</h1>
     <div class="tag">studio <span>· slowed · reverb · lo-fi ·</span></div>
   </div>
-  <button class="btn btn-ghost btn-small" id="newBtn" title="Alles wissen en opnieuw beginnen">＋ Nieuw</button>
+  <button class="btn btn-ghost btn-small" id="newBtn" title="Clear everything and start over">＋ New</button>
 </header>
 
 <main class="app">
 
   <!-- Bron -->
   <section class="card">
-    <div class="card-title">Bron</div>
-    <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Audiobestand kiezen">
+    <div class="card-title">Source</div>
+    <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Choose an audio file">
       <div class="icon">💿</div>
-      <p><strong>Klik of sleep hier een audiobestand</strong></p>
+      <p><strong>Click or drop an audio file here</strong></p>
       <p>MP3 · WAV · M4A · OGG · FLAC</p>
       <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,audio/*">
     </div>
     <div id="fileName"></div>
     <div class="record-row">
-      <span class="record-label">🎙 Of neem op</span>
-      <button class="btn btn-record" id="recBtn">⏺ Opnemen</button>
+      <span class="record-label">🎙 Or record</span>
+      <button class="btn btn-record" id="recBtn">⏺ Record</button>
       <span id="recTimer" class="hidden">0:00</span>
       <div class="level-meter-wrap hidden" id="meterWrap"><div class="level-meter-bar" id="meterBar"></div></div>
     </div>
@@ -328,25 +328,25 @@
     <div class="mode-tabs">
       <button class="mode-tab active-trim" id="tabTrim">✂ Trim</button>
       <button class="mode-tab" id="tabLoop">↻ Loop</button>
-      <span class="mode-hint" id="modeHint">Sleep om een stuk te kiezen · klik om te springen</span>
+      <span class="mode-hint" id="modeHint">Drag to select a section · click to jump</span>
     </div>
 
     <div class="tempo-row" id="tempoRow">
       <span class="lbl">Tempo</span>
       <input class="bpm-in" id="bpmIn" type="number" min="40" max="240" step="0.1" placeholder="—" aria-label="BPM">
       <span>BPM</span>
-      <span class="bpm-slow" id="bpmSlow" title="Tempo na snelheid/toonhoogte"></span>
-      <button class="btn btn-ghost btn-small" id="bpmHalf" title="Halve tempo">½×</button>
-      <button class="btn btn-ghost btn-small" id="bpmDouble" title="Dubbel tempo">2×</button>
-      <button class="btn btn-ghost btn-small" id="bpmTap" title="Tik mee op de tel">Tap</button>
-      <button class="btn btn-ghost btn-small" id="bpmDetect" title="Tempo opnieuw detecteren">⟳ Detecteer</button>
-      <button class="btn btn-ghost btn-small" id="beatHere" title="Zet tel 1 op de afspeelpositie">Tel 1 hier</button>
+      <span class="bpm-slow" id="bpmSlow" title="Tempo after speed/pitch"></span>
+      <button class="btn btn-ghost btn-small" id="bpmHalf" title="Half tempo">½×</button>
+      <button class="btn btn-ghost btn-small" id="bpmDouble" title="Double tempo">2×</button>
+      <button class="btn btn-ghost btn-small" id="bpmTap" title="Tap along with the beat">Tap</button>
+      <button class="btn btn-ghost btn-small" id="bpmDetect" title="Detect tempo again">⟳ Detect</button>
+      <button class="btn btn-ghost btn-small" id="beatHere" title="Set beat 1 at the playhead">Beat 1 here</button>
       <span class="lbl">Snap</span>
-      <button class="btn btn-ghost btn-small on" id="snapBtn" aria-pressed="true" title="Loop-randen vastklikken op de tel">⊞ aan</button>
-      <span class="lbl">Loop-lengte</span>
+      <button class="btn btn-ghost btn-small on" id="snapBtn" aria-pressed="true" title="Snap loop edges to the beat">⊞ on</button>
+      <span class="lbl">Loop length</span>
       <span class="bars-group" id="barsGroup"></span>
-      <button class="btn btn-ghost btn-small" id="nudgeL" title="Loop één tel naar links">◀ tel</button>
-      <button class="btn btn-ghost btn-small" id="nudgeR" title="Loop één tel naar rechts">tel ▶</button>
+      <button class="btn btn-ghost btn-small" id="nudgeL" title="Nudge loop one beat left">◀ beat</button>
+      <button class="btn btn-ghost btn-small" id="nudgeR" title="Nudge loop one beat right">beat ▶</button>
     </div>
 
     <div class="waveform-outer">
@@ -366,54 +366,54 @@
         <span class="zoom-label">Zoom</span>
         <input type="range" id="zoomSlider" min="0" max="100" step="0.5" value="0" style="--acc: var(--cyan)">
         <span id="zoomVal">1×</span>
-        <button class="btn btn-ghost btn-small" id="zoomFitBtn">⊡ Passend</button>
+        <button class="btn btn-ghost btn-small" id="zoomFitBtn">⊡ Fit</button>
       </div>
     </div>
 
-    <div class="sel-info" id="selInfo">Sleep op de golfvorm om een regio te kiezen</div>
+    <div class="sel-info" id="selInfo">Drag on the waveform to select a region</div>
 
     <div class="transport">
-      <button class="btn btn-play" id="playBtn">▶ Afspelen</button>
+      <button class="btn btn-play" id="playBtn">▶ Play</button>
       <button class="btn btn-ghost" id="stopBtn">■ Stop</button>
       <button class="btn btn-loop" id="loopBtn" disabled>↻ Loop</button>
-      <button class="btn btn-ghost btn-small hidden" id="clearLoopBtn">✕ loop wissen</button>
+      <button class="btn btn-ghost btn-small hidden" id="clearLoopBtn">✕ clear loop</button>
       <span class="sep"></span>
-      <button class="btn btn-trim" id="trimBtn" disabled>✂ Knip bij</button>
-      <button class="btn btn-ghost btn-small hidden" id="resetTrimBtn">↩ Origineel</button>
-      <span class="kbd"><b>spatie</b> afspelen/pauze</span>
+      <button class="btn btn-trim" id="trimBtn" disabled>✂ Trim</button>
+      <button class="btn btn-ghost btn-small hidden" id="resetTrimBtn">↩ Original</button>
+      <span class="kbd"><b>space</b> play/pause</span>
     </div>
   </section>
 
   <!-- Presets -->
   <section class="card hidden" id="presetSection">
-    <div class="card-title">Presets <span class="right" style="color:var(--dim)">één klik, daarna fijn-afstellen</span></div>
+    <div class="card-title">Presets <span class="right" style="color:var(--dim)">one click, then fine-tune</span></div>
     <div class="presets" id="presets"></div>
   </section>
 
   <!-- Effects -->
   <section class="card hidden" id="effectsSection">
-    <div class="card-title">Effecten <span class="right" style="color:var(--dim)">live · dubbelklik een schuif = reset</span></div>
+    <div class="card-title">Effects <span class="right" style="color:var(--dim)">live · double-click a slider = reset</span></div>
     <div class="fx-grid" id="fxGrid"></div>
     <div class="fx-foot">
-      <button class="btn btn-ghost btn-small" id="resetEffectsBtn">↩ Alles neutraal</button>
-      <span class="hint">Snelheid en toonhoogte werken als een platenspeler: tempo en toon schuiven samen.</span>
+      <button class="btn btn-ghost btn-small" id="resetEffectsBtn">↩ Reset all</button>
+      <span class="hint">Speed and pitch work like a turntable: tempo and pitch move together.</span>
     </div>
   </section>
 
   <!-- Export -->
   <section class="card hidden" id="exportSection">
-    <div class="card-title">Exporteer</div>
+    <div class="card-title">Export</div>
     <div class="export-row">
-      <select class="select" id="exportFmt" aria-label="Formaat">
+      <select class="select" id="exportFmt" aria-label="Format">
         <option value="mp3-320">MP3 · 320 kbps</option>
-        <option value="mp3-192">MP3 · 192 kbps (kleiner)</option>
-        <option value="wav">WAV · verliesvrij</option>
+        <option value="mp3-192">MP3 · 192 kbps (smaller)</option>
+        <option value="wav">WAV · lossless</option>
       </select>
-      <select class="select" id="exportRange" aria-label="Bereik">
-        <option value="all">Hele track</option>
-        <option value="loop">Alleen loop-regio</option>
+      <select class="select" id="exportRange" aria-label="Range">
+        <option value="all">Whole track</option>
+        <option value="loop">Loop region only</option>
       </select>
-      <button class="btn btn-export" id="exportBtn">⬇ Exporteer</button>
+      <button class="btn btn-export" id="exportBtn">⬇ Export</button>
       <span class="export-meta" id="exportMeta"></span>
     </div>
     <div class="progress hidden" id="exportProgress"><div></div></div>
@@ -422,7 +422,7 @@
 
 </main>
 
-<footer>SlowReverb Studio · alles draait lokaal, niets wordt geüpload</footer>
+<footer>SlowReverb Studio · everything runs locally, nothing is uploaded</footer>
 
 <script src="vendor/lame.min.js"></script>
 <script>if (typeof lamejs === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"><\/script>');</script>
@@ -436,31 +436,31 @@ const fmtHz = f => f >= 1000 ? (f / 1000).toFixed(1) + ' kHz' : Math.round(f) + 
 const sgn = (v, d = 1) => (v > 0 ? '+' : '') + v.toFixed(d);
 
 const GROUPS = [
-  { id: 'tijd',   title: 'Tempo & toon',    acc: 'var(--pink)' },
-  { id: 'ruimte', title: 'Ruimte',          acc: 'var(--violet)' },
-  { id: 'kleur',  title: 'Kleur & filter',  acc: 'var(--cyan)' },
+  { id: 'tijd',   title: 'Tempo & pitch',    acc: 'var(--pink)' },
+  { id: 'ruimte', title: 'Space',          acc: 'var(--violet)' },
+  { id: 'kleur',  title: 'Tone & filter',  acc: 'var(--cyan)' },
   { id: 'lofi',   title: 'Lo-fi & tape',    acc: 'var(--mint)' },
-  { id: 'out',    title: 'Uitgang',         acc: 'var(--peach)' },
+  { id: 'out',    title: 'Output',         acc: 'var(--peach)' },
 ];
 const PARAMS = [
-  { id: 'speed',   g: 'tijd',   label: 'Snelheid',     min: 0.5, max: 1.5, step: 0.01, def: 1,   fmt: v => v.toFixed(2) + '×' },
-  { id: 'pitch',   g: 'tijd',   label: 'Toonhoogte',   min: -12, max: 12, step: 0.5,  def: 0,   fmt: v => sgn(v) + ' st' },
+  { id: 'speed',   g: 'tijd',   label: 'Speed',     min: 0.5, max: 1.5, step: 0.01, def: 1,   fmt: v => v.toFixed(2) + '×' },
+  { id: 'pitch',   g: 'tijd',   label: 'Pitch',   min: -12, max: 12, step: 0.5,  def: 0,   fmt: v => sgn(v) + ' st' },
   { id: 'reverb',  g: 'ruimte', label: 'Reverb',       min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'size',    g: 'ruimte', label: 'Ruimtegrootte',min: 0, max: 100, step: 1, def: 55,  fmt: v => irDur(v).toFixed(1) + ' s' },
+  { id: 'size',    g: 'ruimte', label: 'Room size',min: 0, max: 100, step: 1, def: 55,  fmt: v => irDur(v).toFixed(1) + ' s' },
   { id: 'delay',   g: 'ruimte', label: 'Echo',         min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'echoT',   g: 'ruimte', label: 'Echo-tijd',    min: 0.06, max: 1, step: 0.01, def: 0.33, fmt: v => Math.round(v * 1000) + ' ms' },
+  { id: 'echoT',   g: 'ruimte', label: 'Echo time',    min: 0.06, max: 1, step: 0.01, def: 0.33, fmt: v => Math.round(v * 1000) + ' ms' },
   { id: 'chorus',  g: 'ruimte', label: 'Chorus',       min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'bass',    g: 'kleur',  label: 'Bas',          min: -15, max: 15, step: 0.5, def: 0, fmt: v => sgn(v) + ' dB' },
-  { id: 'treble',  g: 'kleur',  label: 'Hoog',         min: -15, max: 15, step: 0.5, def: 0, fmt: v => sgn(v) + ' dB' },
-  { id: 'cutoff',  g: 'kleur',  label: 'Filter',       sub: 'onder water ←', min: 0, max: 100, step: 0.5, def: 100, fmt: v => v >= 100 ? 'open' : fmtHz(hz(v)) },
-  { id: 'reso',    g: 'kleur',  label: 'Resonantie',   min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'sweep',   g: 'kleur',  label: 'Filter-sweep', min: 0, max: 100, step: 1, def: 0,   fmt: v => v <= 0 ? 'uit' : sweepRate(v).toFixed(2) + ' Hz' },
+  { id: 'bass',    g: 'kleur',  label: 'Bass',          min: -15, max: 15, step: 0.5, def: 0, fmt: v => sgn(v) + ' dB' },
+  { id: 'treble',  g: 'kleur',  label: 'Treble',         min: -15, max: 15, step: 0.5, def: 0, fmt: v => sgn(v) + ' dB' },
+  { id: 'cutoff',  g: 'kleur',  label: 'Filter',       sub: 'underwater ←', min: 0, max: 100, step: 0.5, def: 100, fmt: v => v >= 100 ? 'open' : fmtHz(hz(v)) },
+  { id: 'reso',    g: 'kleur',  label: 'Resonance',   min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
+  { id: 'sweep',   g: 'kleur',  label: 'Filter-sweep', min: 0, max: 100, step: 1, def: 0,   fmt: v => v <= 0 ? 'off' : sweepRate(v).toFixed(2) + ' Hz' },
   { id: 'wobble',  g: 'lofi',   label: 'Tape-wobble',  min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'crackle', g: 'lofi',   label: 'Vinylkraak',   min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
-  { id: 'crush',   g: 'lofi',   label: 'Bitcrush',     min: 0, max: 100, step: 1, def: 0,   fmt: v => v <= 0 ? 'uit' : crushBits(v).toFixed(1) + ' bit' },
-  { id: 'drive',   g: 'lofi',   label: 'Drive',        sub: 'warmte/vervorming', min: 0, max: 100, step: 1, def: 0, fmt: v => v + '%' },
+  { id: 'crackle', g: 'lofi',   label: 'Vinyl crackle',   min: 0, max: 100, step: 1, def: 0,   fmt: v => v + '%' },
+  { id: 'crush',   g: 'lofi',   label: 'Bitcrush',     min: 0, max: 100, step: 1, def: 0,   fmt: v => v <= 0 ? 'off' : crushBits(v).toFixed(1) + ' bit' },
+  { id: 'drive',   g: 'lofi',   label: 'Drive',        sub: 'warmth/distortion', min: 0, max: 100, step: 1, def: 0, fmt: v => v + '%' },
   { id: 'volume',  g: 'out',    label: 'Volume',       min: 0, max: 150, step: 1, def: 100, fmt: v => v + '%' },
-  { id: 'width',   g: 'out',    label: 'Stereobreedte',min: 0, max: 200, step: 1, def: 100, fmt: v => v + '%' },
+  { id: 'width',   g: 'out',    label: 'Stereo width',min: 0, max: 200, step: 1, def: 100, fmt: v => v + '%' },
 ];
 const DEFAULTS = Object.fromEntries(PARAMS.map(p => [p.id, p.def]));
 const P = { ...DEFAULTS };
@@ -473,10 +473,10 @@ const PRESETS = [
   { name: 'Slowed + Reverb', icon: '🌙', p: { speed: 0.85, reverb: 55, size: 65, delay: 8, chorus: 12, bass: 3, treble: -2 } },
   { name: 'Vaporwave',       icon: '🌴', p: { speed: 0.78, reverb: 68, size: 80, delay: 22, echoT: 0.42, chorus: 35, bass: 4, treble: -3, wobble: 18, cutoff: 88 } },
   { name: 'Lo-fi beat',      icon: '📻', p: { speed: 0.92, reverb: 22, size: 35, bass: 4, treble: -5, cutoff: 76, reso: 10, wobble: 35, crackle: 40, crush: 30, drive: 15 } },
-  { name: 'Onder water',     icon: '🫧', p: { speed: 0.9, reverb: 45, size: 60, bass: 6, treble: -10, cutoff: 38, reso: 35, chorus: 20 } },
+  { name: 'Underwater',     icon: '🫧', p: { speed: 0.9, reverb: 45, size: 60, bass: 6, treble: -10, cutoff: 38, reso: 35, chorus: 20 } },
   { name: 'Dreamy sweep',    icon: '🌀', p: { speed: 0.88, reverb: 60, size: 75, delay: 18, chorus: 40, cutoff: 82, reso: 45, sweep: 18, width: 160 } },
-  { name: 'Warme tape',      icon: '📼', p: { speed: 0.97, wobble: 50, drive: 35, treble: -3, bass: 2, crackle: 12, reverb: 15, size: 30 } },
-  { name: 'Oude radio',      icon: '📡', p: { bass: -12, treble: -4, cutoff: 70, reso: 30, crush: 55, drive: 45, crackle: 25, width: 0, volume: 110 } },
+  { name: 'Warm tape',      icon: '📼', p: { speed: 0.97, wobble: 50, drive: 35, treble: -3, bass: 2, crackle: 12, reverb: 15, size: 30 } },
+  { name: 'Old radio',      icon: '📡', p: { bass: -12, treble: -4, cutoff: 70, reso: 30, crush: 55, drive: 45, crackle: 25, width: 0, volume: 110 } },
   { name: 'Nightcore',       icon: '⚡', p: { speed: 1.25, reverb: 12, size: 30, bass: 2, treble: 3 } },
 ];
 
@@ -766,7 +766,7 @@ function seek(t) {
   if (state === 'playing') play(t); else { pos = t; placePlayhead(t); updateTime(t); }
 }
 function updateTransport() {
-  $('playBtn').innerHTML = state === 'playing' ? '❚❚ Pauze' : '▶ Afspelen';
+  $('playBtn').innerHTML = state === 'playing' ? '❚❚ Pause' : '▶ Play';
   $('loopBtn').classList.toggle('on', loopOn);
   $('loopBtn').disabled = !(loopE - loopS > 0.02);
   $('clearLoopBtn').classList.toggle('hidden', !(loopE - loopS > 0.02));
@@ -811,11 +811,11 @@ fileInput.addEventListener('change', () => { loadFile(fileInput.files[0]); fileI
 
 async function loadFile(file) {
   if (!file) return;
-  $('fileName').textContent = '⏳ ' + file.name + ' laden…';
+  $('fileName').textContent = '⏳ Loading ' + file.name + '…';
   const ctx = getCtx();
   let decoded;
   try { decoded = await ctx.decodeAudioData(await file.arrayBuffer()); }
-  catch (e) { $('fileName').textContent = '❌ Kon ' + file.name + ' niet lezen. Probeer MP3 of WAV.'; return; }
+  catch (e) { $('fileName').textContent = '❌ Could not read ' + file.name + '. Try MP3 or WAV.'; return; }
   fileBase = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\- ()[\]]+/g, '_').trim() || 'track';
   $('fileName').textContent = '💿 ' + file.name;
   loadBuffer(decoded);
@@ -845,7 +845,7 @@ $('recBtn').addEventListener('click', () => {
 });
 async function startRecording() {
   try { recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
-  catch (e) { $('fileName').textContent = '❌ Geen toegang tot de microfoon. Sta het toe in je instellingen.'; return; }
+  catch (e) { $('fileName').textContent = '❌ No access to the microphone. Allow it in your settings.'; return; }
   const ctx = getCtx(), src = ctx.createMediaStreamSource(recStream);
   recAnalyser = ctx.createAnalyser(); recAnalyser.fftSize = 256; src.connect(recAnalyser);
   animateMeter();
@@ -854,27 +854,27 @@ async function startRecording() {
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
   mediaRecorder.onstop = finishRecording;
   mediaRecorder.start(100);
-  $('recBtn').textContent = '⏹ Stop opname'; $('recBtn').classList.add('recording');
+  $('recBtn').textContent = '⏹ Stop recording'; $('recBtn').classList.add('recording');
   $('recTimer').classList.remove('hidden'); $('meterWrap').classList.remove('hidden');
   recStartTime = Date.now();
   recTimerInt = setInterval(() => { const s = Math.floor((Date.now() - recStartTime) / 1000); $('recTimer').textContent = formatTime(s); }, 250);
-  $('fileName').textContent = '🔴 Opname bezig…';
+  $('fileName').textContent = '🔴 Recording…';
 }
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   if (recStream) recStream.getTracks().forEach(t => t.stop());
   clearInterval(recTimerInt); cancelAnimationFrame(recAnim); recAnalyser = null;
-  $('recBtn').textContent = '⏺ Opnemen'; $('recBtn').classList.remove('recording');
+  $('recBtn').textContent = '⏺ Record'; $('recBtn').classList.remove('recording');
   $('recTimer').classList.add('hidden'); $('meterWrap').classList.add('hidden'); $('meterBar').style.width = '0%';
 }
 async function finishRecording() {
   const blob = new Blob(recChunks, { type: mediaRecorder.mimeType });
   let decoded;
   try { decoded = await getCtx().decodeAudioData(await blob.arrayBuffer()); }
-  catch (e) { $('fileName').textContent = '❌ Kon de opname niet verwerken.'; return; }
-  fileBase = 'opname_' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  catch (e) { $('fileName').textContent = '❌ Could not process the recording.'; return; }
+  fileBase = 'recording_' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
   const db = normalizeRecording(decoded);
-  $('fileName').textContent = '🎙 Opname (' + formatTime(decoded.duration) + ')' + (db >= 1 ? ` · versterkt +${Math.round(db)} dB` : '');
+  $('fileName').textContent = '🎙 Recording (' + formatTime(decoded.duration) + ')' + (db >= 1 ? ` · boosted +${Math.round(db)} dB` : '');
   loadBuffer(decoded);
 }
 /* Raw mic input (no browser auto-gain) is often very soft. Bring the recording to a healthy
@@ -1086,7 +1086,7 @@ function setMode(m) {
   mode = m; hasSel = false;
   $('tabTrim').className = 'mode-tab' + (m === 'trim' ? ' active-trim' : '');
   $('tabLoop').className = 'mode-tab' + (m === 'loop' ? ' active-loop' : '');
-  $('modeHint').textContent = m === 'trim' ? 'Sleep om een stuk te kiezen dat je wilt houden · klik om te springen' : 'Sleep om een stuk te kiezen dat herhaalt · klik om te springen';
+  $('modeHint').textContent = m === 'trim' ? 'Drag to select a section to keep · click to jump' : 'Drag to select a section to repeat · click to jump';
   redrawOverlays(); updateSelInfo();
 }
 $('tabTrim').addEventListener('click', () => setMode('trim'));
@@ -1096,13 +1096,13 @@ function updateSelInfo() {
   if (!workingBuffer) return;
   const dur = workingBuffer.duration;
   if (hasSel && mode === 'trim') {
-    el.textContent = `✂ ${formatTime(selA * dur)} → ${formatTime(selB * dur)} (${formatTime((selB - selA) * dur)}) · klik "Knip bij" om alleen dit stuk te houden`;
+    el.textContent = `✂ ${formatTime(selA * dur)} → ${formatTime(selB * dur)} (${formatTime((selB - selA) * dur)}) · click "Trim" to keep only this section`;
     el.className = 'sel-info has-trim';
   } else if (loopE - loopS > 0.02) {
-    el.textContent = `↻ Loop ${formatTime(loopS)} → ${formatTime(loopE)} (${((loopE - loopS)).toFixed(2)} s${bpm > 0 ? ' · ' + fmtBeats((loopE - loopS) / (60 / bpm)) : ''})` + (loopOn ? ' · actief' : ' · klik Loop om te herhalen');
+    el.textContent = `↻ Loop ${formatTime(loopS)} → ${formatTime(loopE)} (${((loopE - loopS)).toFixed(2)} s${bpm > 0 ? ' · ' + fmtBeats((loopE - loopS) / (60 / bpm)) : ''})` + (loopOn ? ' · active' : ' · click Loop to repeat');
     el.className = 'sel-info has-loop';
   } else {
-    el.textContent = mode === 'trim' ? 'Sleep op de golfvorm om een stuk te kiezen' : 'Sleep op de golfvorm om een loop-regio te kiezen';
+    el.textContent = mode === 'trim' ? 'Drag on the waveform to select a section' : 'Drag on the waveform to select a loop region';
     el.className = 'sel-info';
   }
 }
@@ -1185,7 +1185,7 @@ $('resetTrimBtn').addEventListener('click', () => {
 
 // ═══ Nieuw ═══════════════════════════════════════════════════════════════════
 $('newBtn').addEventListener('click', () => {
-  if (workingBuffer && !confirm('Alles wissen en opnieuw beginnen?')) return;
+  if (workingBuffer && !confirm('Clear everything and start over?')) return;
   killGraph(); state = 'stopped'; pos = 0;
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
   originalBuffer = workingBuffer = null; hasSel = false; loopOn = false; loopS = loopE = 0; zoom = 1; panNorm = 0;
@@ -1253,14 +1253,14 @@ function toWav(buf) {
 }
 function toInt16(f32) { const o = new Int16Array(f32.length); for (let i = 0; i < f32.length; i++) { const s = Math.max(-1, Math.min(1, f32[i])); o[i] = s < 0 ? s * 0x8000 : s * 0x7FFF; } return o; }
 async function toMp3(buf, kbps) {
-  if (typeof lamejs === 'undefined') throw new Error('MP3-encoder niet geladen');
+  if (typeof lamejs === 'undefined') throw new Error('MP3 encoder not loaded');
   const enc = new lamejs.Mp3Encoder(2, buf.sampleRate, kbps);
   const L = toInt16(buf.getChannelData(0)), R = toInt16(buf.getChannelData(1));
   const out = [], block = 1152, total = L.length;
   for (let i = 0; i < total; i += block) {
     const d = enc.encodeBuffer(L.subarray(i, i + block), R.subarray(i, i + block));
     if (d.length) out.push(new Uint8Array(d));
-    if ((i / block) % 300 === 0) { setProgress(0.35 + 0.65 * i / total); setStatus(`🎚 MP3 coderen… ${Math.round(i / total * 100)}%`); await tick(); }
+    if ((i / block) % 300 === 0) { setProgress(0.35 + 0.65 * i / total); setStatus(`🎚 Encoding MP3… ${Math.round(i / total * 100)}%`); await tick(); }
   }
   const end = enc.flush(); if (end.length) out.push(new Uint8Array(end));
   return new Blob(out, { type: 'audio/mpeg' });
@@ -1275,20 +1275,20 @@ $('exportBtn').addEventListener('click', async () => {
   const btn = $('exportBtn'); btn.disabled = true;
   const fmt = $('exportFmt').value;
   try {
-    setProgress(0.05); setStatus('⏳ Effecten renderen…'); await tick();
+    setProgress(0.05); setStatus('⏳ Rendering effects…'); await tick();
     const rendered = await renderOffline();
     setProgress(0.35); await tick();
     const tag = (activePreset >= 0 ? PRESETS[activePreset].name : 'slowreverb').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     let blob, ext;
-    if (fmt === 'wav') { setStatus('💾 WAV schrijven…'); await tick(); blob = toWav(rendered); ext = 'wav'; }
+    if (fmt === 'wav') { setStatus('💾 Writing WAV…'); await tick(); blob = toWav(rendered); ext = 'wav'; }
     else { blob = await toMp3(rendered, fmt === 'mp3-320' ? 320 : 192); ext = 'mp3'; }
     setProgress(1);
     const isLoopX = $('exportRange').value === 'loop' && loopE - loopS > 0.02;
     const btag = isLoopX ? ` loop${bpm > 0 ? ' ' + Math.round(bpm * effRate() * 10) / 10 + 'bpm ' + fmtBeats((loopE - loopS) / (60 / bpm)).replace(/ /g, '') : ''}` : '';
     download(blob, `${fileBase} (${tag}${btag}).${ext}`);
-    setStatus(`✅ Klaar: ${ext.toUpperCase()} · ${formatTime(rendered.duration)} · ${(blob.size / 1048576).toFixed(1)} MB`);
+    setStatus(`✅ Done: ${ext.toUpperCase()} · ${formatTime(rendered.duration)} · ${(blob.size / 1048576).toFixed(1)} MB`);
   } catch (e) {
-    console.error(e); setStatus('❌ Export mislukt: ' + e.message);
+    console.error(e); setStatus('❌ Export failed: ' + e.message);
   } finally {
     btn.disabled = false; setTimeout(() => setProgress(-1), 1200);
   }
@@ -1356,20 +1356,20 @@ function detectTempoFrom(buf) {
 }
 function detectTempo() {
   if (!workingBuffer) return;
-  $('bpmDetect').disabled = true; tempoInfo = 'tempo meten…'; updateTempoUI();
+  $('bpmDetect').disabled = true; tempoInfo = 'measuring tempo…'; updateTempoUI();
   setTimeout(() => {
     try {
       const r = detectTempoFrom(workingBuffer);
-      if (r) { bpm = r.bpm; const bar = barBeats * 60 / bpm; gridT0 = ((r.t0 % bar) + bar) % bar; tempoInfo = r.conf < 1.35 ? 'onzeker: controleer ½× / 2× of tap' : ''; }
-      else tempoInfo = 'te kort om te meten';
-    } catch (e) { console.error(e); tempoInfo = 'meten mislukt'; }
+      if (r) { bpm = r.bpm; const bar = barBeats * 60 / bpm; gridT0 = ((r.t0 % bar) + bar) % bar; tempoInfo = r.conf < 1.35 ? 'unsure: check ½× / 2× or tap' : ''; }
+      else tempoInfo = 'too short to measure';
+    } catch (e) { console.error(e); tempoInfo = 'measurement failed'; }
     $('bpmDetect').disabled = false; updateTempoUI(); drawAll(); updateSelInfo();
   }, 20);
 }
 function fmtBeats(nb) {
   const r = Math.round(nb);
-  if (Math.abs(nb - r) > 0.05) return nb.toFixed(1) + ' tellen';
-  return r % barBeats === 0 ? (r / barBeats) + (r / barBeats === 1 ? ' maat' : ' maten') : r + (r === 1 ? ' tel' : ' tellen');
+  if (Math.abs(nb - r) > 0.05) return nb.toFixed(1) + ' beats';
+  return r % barBeats === 0 ? (r / barBeats) + (r / barBeats === 1 ? ' bar' : ' bars') : r + (r === 1 ? ' beat' : ' beats');
 }
 function nearestBeat(t) { const beat = 60 / bpm; return gridT0 + Math.round((t - gridT0) / beat) * beat; }
 function snapLoop(a, b) {
@@ -1391,17 +1391,17 @@ function updateTempoUI() {
   const has = bpm > 0, inp = $('bpmIn');
   if (document.activeElement !== inp) inp.value = has ? bpm : '';
   const slow = has ? Math.round(bpm * effRate() * 10) / 10 : 0;
-  $('bpmSlow').textContent = tempoInfo ? '· ' + tempoInfo : (has && Math.abs(effRate() - 1) > 0.005 ? `→ ${slow} na effecten` : '');
+  $('bpmSlow').textContent = tempoInfo ? '· ' + tempoInfo : (has && Math.abs(effRate() - 1) > 0.005 ? `→ ${slow} after effects` : '');
   ['bpmHalf', 'bpmDouble', 'beatHere', 'nudgeL', 'nudgeR'].forEach(id => $(id).disabled = !has);
   $('nudgeL').disabled = $('nudgeR').disabled = !has || !(loopE - loopS > 0.02);
-  $('snapBtn').classList.toggle('on', snapOn); $('snapBtn').setAttribute('aria-pressed', snapOn); $('snapBtn').textContent = snapOn ? '⊞ aan' : '⊞ uit';
+  $('snapBtn').classList.toggle('on', snapOn); $('snapBtn').setAttribute('aria-pressed', snapOn); $('snapBtn').textContent = snapOn ? '⊞ on' : '⊞ off';
   $('barsGroup').querySelectorAll('button').forEach(bt => { bt.classList.toggle('on', +bt.dataset.bars === loopBars); bt.disabled = !has && +bt.dataset.bars > 0; });
 }
 (function buildBars() {
   const g = $('barsGroup');
   [[0, 'vrij'], [1, '1'], [2, '2'], [4, '4'], [8, '8'], [16, '16']].forEach(([n, l]) => {
     const b = document.createElement('button'); b.className = 'btn btn-ghost btn-small'; b.dataset.bars = n;
-    b.textContent = l; b.title = n ? `${n} ${n === 1 ? 'maat' : 'maten'} (${n * 4} tellen)` : 'Vrije lengte (snapt alleen op de tel)';
+    b.textContent = l; b.title = n ? `${n} ${n === 1 ? 'bar' : 'bars'} (${n * 4} beats)` : 'Free length (snaps to the beat only)';
     b.addEventListener('click', () => {
       loopBars = n; updateTempoUI();
       if (n > 0 && bpm > 0 && workingBuffer) {
@@ -1431,7 +1431,7 @@ $('bpmTap').addEventListener('click', () => {
     bpm = Math.round(60000 / iv / effRate() * 10) / 10; tempoInfo = '';
     if (state === 'playing') { const bar = barBeats * 60 / bpm; gridT0 = ((curPos() % bar) + bar) % bar; }
     updateTempoUI(); drawAll(); updateSelInfo();
-  } else { tempoInfo = `tik nog ${3 - taps.length}×`; updateTempoUI(); tempoInfo = ''; }
+  } else { tempoInfo = `tap ${3 - taps.length} more×`; updateTempoUI(); tempoInfo = ''; }
 });
 $('beatHere').addEventListener('click', () => {
   if (!(bpm > 0)) return; const bar = barBeats * 60 / bpm, t = state === 'playing' ? curPos() : pos;
