@@ -492,8 +492,11 @@ let mode = 'trim', zoom = 1, panNorm = 0;
 let activePreset = -1;
 let bpm = 0, gridT0 = 0, snapOn = true, loopBars = 0, barBeats = 4, tempoInfo = '';
 
+// iOS/Safari: play as media (Bluetooth, silent switch); play-and-record only while the mic is open.
+function audioMode(type) { try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) {} }
 function getCtx() {
   if (!audioCtx) {
+    audioMode('playback');
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.78;
@@ -844,8 +847,9 @@ $('recBtn').addEventListener('click', () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording(); else startRecording();
 });
 async function startRecording() {
+  audioMode('play-and-record');
   try { recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
-  catch (e) { $('fileName').textContent = '❌ No access to the microphone. Allow it in your settings.'; return; }
+  catch (e) { audioMode('playback'); $('fileName').textContent = '❌ No access to the microphone. Allow it in your settings.'; return; }
   const ctx = getCtx(), src = ctx.createMediaStreamSource(recStream);
   recAnalyser = ctx.createAnalyser(); recAnalyser.fftSize = 256; src.connect(recAnalyser);
   animateMeter();
@@ -863,6 +867,7 @@ async function startRecording() {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   if (recStream) recStream.getTracks().forEach(t => t.stop());
+  audioMode('playback');
   clearInterval(recTimerInt); cancelAnimationFrame(recAnim); recAnalyser = null;
   $('recBtn').textContent = '⏺ Record'; $('recBtn').classList.remove('recording');
   $('recTimer').classList.add('hidden'); $('meterWrap').classList.add('hidden'); $('meterBar').style.width = '0%';
