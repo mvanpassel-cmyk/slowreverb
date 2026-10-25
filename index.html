@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=VT323&display=swap" rel="stylesheet">
 <title>SlowReverb Studio</title>
+<link rel="icon" type="image/svg+xml" href="/logos/slowreverb.svg">
 <style>
   :root {
     --bg: #0b0618;
@@ -1492,7 +1493,7 @@ function drawAppIcon(size) {
 window.drawAppIcon = drawAppIcon;
 (function initPWA() {
   try {
-    const i180 = drawAppIcon(180).toDataURL('image/png'), i512 = drawAppIcon(512).toDataURL('image/png');
+    const i180 = location.origin + '/logos/slowreverb-180.png', i512 = location.origin + '/logos/slowreverb-512.png';
     $('appleIcon').href = i180;
     const manifest = { name: 'SlowReverb Studio', short_name: 'SlowReverb', start_url: location.href.split('#')[0], display: 'standalone',
       background_color: '#0b0618', theme_color: '#0b0618', icons: [{ src: i180, sizes: '180x180', type: 'image/png' }, { src: i512, sizes: '512x512', type: 'image/png' }] };
